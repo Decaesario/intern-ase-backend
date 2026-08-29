@@ -29,19 +29,22 @@ enum Role {
 }
 
 model Report {
-  id          Int          @id @default(autoincrement())
-  userId      Int
-  user        User         @relation(fields: [userId], references: [id])
-  latitude    Float
-  longitude   Float
-  dirtyLevel  DirtyLevel
-  description String?
-  imageUrl    String?
-  status      ReportStatus @default(BELUM_DITANGANI)
-  event       Event?       @relation(fields: [eventId], references: [id])
-  eventId     Int?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id             Int          @id @default(autoincrement())
+  userId         Int
+  user           User         @relation(fields: [userId], references: [id])
+  latitude       Float
+  longitude      Float
+  wasteTypes     Json
+  otherWasteType String?
+  dirtyLevel     DirtyLevel
+  description    String?
+  imageUrl       String?
+  status         ReportStatus @default(SUBMITTED)
+  rejectReason   String?
+  event          Event?       @relation(fields: [eventId], references: [id])
+  eventId        Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 enum DirtyLevel {
@@ -51,9 +54,12 @@ enum DirtyLevel {
 }
 
 enum ReportStatus {
-  BELUM_DITANGANI
-  AKAN_DIBERSIHKAN
-  SUDAH_BERSIH
+  SUBMITTED
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  IN_PROGRESS
+  RESOLVED
 }
 
 model Event {
