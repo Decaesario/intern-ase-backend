@@ -5,7 +5,7 @@ import { verifyToken, authorize } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 router.get('/me', verifyToken, getMe);
-router.get('/', verifyToken, authorize('SUPER_ADMIN'), getAllUsers);
-router.patch('/:id/role', verifyToken, authorize('SUPER_ADMIN'), updateUserRole);
+router.get('/', verifyToken, authorize('ADMIN'), getAllUsers);
+router.patch('/:id/role', verifyToken, authorize('ADMIN'), updateUserRole);
 
 export default router;

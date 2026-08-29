@@ -33,7 +33,7 @@ export const updateUserRole = async (req, res) => {
     const { id } = req.params;
     const { role } = req.body;
 
-    const validRoles = ['USER', 'ADMIN', 'SUPER_ADMIN'];
+    const validRoles = ['USER', 'ADMIN'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ message: 'Role tidak valid' });
     }
