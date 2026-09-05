@@ -11,16 +11,17 @@ datasource db {
   provider = "mysql"
 }
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(USER)
-  reports   Report[]
-  events    Event[]  @relation("EventOrganizer")
-  joins     EventParticipant[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  name           String
+  email          String   @unique
+  password       String
+  role           Role     @default(USER)
+  profilePicture String?
+  reports        Report[]
+  events         Event[]  @relation("EventOrganizer")
+  joins          EventParticipant[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 enum Role {

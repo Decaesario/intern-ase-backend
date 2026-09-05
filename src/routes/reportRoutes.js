@@ -7,10 +7,13 @@ import {
   deleteReport,
   verifyReport,
 } from '../controllers/reportController.js';
+import { getHeatmap, getHeatmapAreaDetail } from '../controllers/mapController.js';
 import { verifyToken, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
+router.get('/map', getHeatmap);
+router.get('/map/:areaId', getHeatmapAreaDetail);
 router.get('/', getAllReports);
 router.get('/:id', getReportById);
 router.post('/', verifyToken, createReport);
