@@ -3,10 +3,25 @@ import prisma from '../lib/prisma.js';
 // CREATE - bikin laporan baru
 export const createReport = async (req, res) => {
   try {
-    const { latitude, longitude, wasteTypes, otherWasteType, dirtyLevel, description, imageUrl } = req.body;
+    const {
+      latitude,
+      longitude,
+      locationName,
+      wasteTypeIds,
+      customWasteType,
+      pollutionLevel,
+      description,
+      photoUrls,
+    } = req.body;
 
-    if (!latitude || !longitude || !wasteTypes || !dirtyLevel) {
-      return res.status(400).json({ message: 'Latitude, longitude, wasteTypes, dan dirtyLevel wajib diisi' });
+    if (!latitude || !longitude || !pollutionLevel || !wasteTypeIds || wasteTypeIds.length === 0) {
+      return res.status(400).json({
+        message: 'Latitude, longitude, pollutionLevel, dan minimal 1 wasteTypeIds wajib diisi',
+      });
+    }
+
+    if (!photoUrls || photoUrls.length < 1 || photoUrls.length > 5) {
+      return res.status(400).json({ message: 'Wajib upload 1 sampai 5 foto' });
     }
 
     const report = await prisma.report.create({
@@ -14,12 +29,18 @@ export const createReport = async (req, res) => {
         userId: req.user.userId,
         latitude,
         longitude,
-        wasteTypes,
-        otherWasteType: otherWasteType || null,
-        dirtyLevel,
+        locationName: locationName || null,
+        pollutionLevel,
         description: description || null,
-        imageUrl: imageUrl || null,
+        customWasteType: customWasteType || null,
+        wasteTypes: {
+          connect: wasteTypeIds.map((id) => ({ id })),
+        },
+        photos: {
+          create: photoUrls.map((url) => ({ fileUrl: url })),
+        },
       },
+      include: { wasteTypes: true, photos: true },
     });
 
     res.status(201).json({ message: 'Laporan berhasil dibuat', report });
@@ -35,6 +56,7 @@ export const getAllReports = async (req, res) => {
 
     const reports = await prisma.report.findMany({
       where: status ? { status } : {},
+      include: { wasteTypes: true, photos: true },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -51,7 +73,11 @@ export const getReportById = async (req, res) => {
 
     const report = await prisma.report.findUnique({
       where: { id: Number(id) },
-      include: { user: { select: { id: true, name: true } } },
+      include: {
+        user: { select: { id: true, name: true } },
+        wasteTypes: true,
+        photos: true,
+      },
     });
 
     if (!report) {
@@ -68,7 +94,7 @@ export const getReportById = async (req, res) => {
 export const updateReport = async (req, res) => {
   try {
     const { id } = req.params;
-    const { latitude, longitude, wasteTypes, otherWasteType, dirtyLevel, description, imageUrl } = req.body;
+    const { latitude, longitude, locationName, pollutionLevel, description, customWasteType } = req.body;
 
     const report = await prisma.report.findUnique({ where: { id: Number(id) } });
 
@@ -89,12 +115,12 @@ export const updateReport = async (req, res) => {
       data: {
         latitude: latitude ?? report.latitude,
         longitude: longitude ?? report.longitude,
-        wasteTypes: wasteTypes ?? report.wasteTypes,
-        otherWasteType: otherWasteType ?? report.otherWasteType,
-        dirtyLevel: dirtyLevel ?? report.dirtyLevel,
+        locationName: locationName ?? report.locationName,
+        pollutionLevel: pollutionLevel ?? report.pollutionLevel,
         description: description ?? report.description,
-        imageUrl: imageUrl ?? report.imageUrl,
+        customWasteType: customWasteType ?? report.customWasteType,
       },
+      include: { wasteTypes: true, photos: true },
     });
 
     res.json({ message: 'Laporan berhasil diperbarui', report: updatedReport });

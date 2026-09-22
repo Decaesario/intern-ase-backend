@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,6 +5,7 @@ generator client {
 datasource db {
   provider = "mysql"
 }
+
 model User {
   id             Int      @id @default(autoincrement())
   name           String
@@ -17,11 +13,18 @@ model User {
   password       String
   role           Role     @default(USER)
   profilePicture String?
-  reports        Report[]
-  events         Event[]  @relation("EventOrganizer")
-  joins          EventParticipant[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  totalXP        Int      @default(0)
+  isActive       Boolean  @default(true)
+
+  reports           Report[]
+  challengeProgress ChallengeProgress[]
+  notifications     Notification[]
+  badges            UserBadge[]
+  events            Event[]             @relation("EventOrganizer")
+  joins             EventParticipant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum Role {
@@ -30,28 +33,33 @@ enum Role {
 }
 
 model Report {
-  id             Int          @id @default(autoincrement())
-  userId         Int
-  user           User         @relation(fields: [userId], references: [id])
-  latitude       Float
-  longitude      Float
-  wasteTypes     Json
-  otherWasteType String?
-  dirtyLevel     DirtyLevel
-  description    String?
-  imageUrl       String?
-  status         ReportStatus @default(SUBMITTED)
-  rejectReason   String?
-  event          Event?       @relation(fields: [eventId], references: [id])
-  eventId        Int?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id              Int          @id @default(autoincrement())
+  userId          Int
+  user            User         @relation(fields: [userId], references: [id])
+  latitude        Float
+  longitude       Float
+  locationName    String?
+  pollutionLevel  PollutionLevel
+  description     String?
+  status          ReportStatus @default(SUBMITTED)
+  rejectReason    String?
+  customWasteType String?
+
+  photos     ReportPhoto[]
+  wasteTypes WasteType[]
+
+  event   Event? @relation(fields: [eventId], references: [id])
+  eventId Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-enum DirtyLevel {
-  BERSIH
-  SEDANG
-  KOTOR
+enum PollutionLevel {
+  LOW
+  MODERATE
+  HIGH
+  CRITICAL
 }
 
 enum ReportStatus {
@@ -61,6 +69,103 @@ enum ReportStatus {
   REJECTED
   IN_PROGRESS
   RESOLVED
+}
+
+model ReportPhoto {
+  id         Int      @id @default(autoincrement())
+  reportId   Int
+  report     Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  fileUrl    String
+  uploadedAt DateTime @default(now())
+}
+
+model WasteType {
+  id      Int      @id @default(autoincrement())
+  name    String   @unique
+  reports Report[]
+}
+
+model Challenge {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  target      Int
+  startDate   DateTime
+  endDate     DateTime
+  rewardXP    Int
+
+  progress ChallengeProgress[]
+
+  createdAt DateTime @default(now())
+}
+
+model ChallengeProgress {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  challengeId Int
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+  progress    Int       @default(0)
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+
+  @@unique([userId, challengeId])
+}
+
+model Badge {
+  id                Int                 @id @default(autoincrement())
+  name              String
+  description       String?
+  imageUrl          String?
+  requirementType   BadgeRequirementType
+  requirementValue  Int
+
+  users UserBadge[]
+}
+
+enum BadgeRequirementType {
+  VERIFIED_REPORT_COUNT
+  COMPLETED_CHALLENGE_COUNT
+}
+
+model UserBadge {
+  id       Int      @id @default(autoincrement())
+  userId   Int
+  user     User     @relation(fields: [userId], references: [id])
+  badgeId  Int
+  badge    Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int
+  user      User             @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+}
+
+enum NotificationType {
+  REPORT_STATUS_CHANGED
+  REPORT_REJECTED
+  CHALLENGE_COMPLETED
+  XP_EARNED
+  BADGE_EARNED
+  NEW_REPORT_ADMIN
+}
+
+model InformasiEdukasi {
+  id             Int      @id @default(autoincrement())
+  title          String
+  content        String
+  coverImageUrl  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Event {
