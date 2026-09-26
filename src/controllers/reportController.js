@@ -184,6 +184,77 @@ export const verifyReport = async (req, res) => {
       },
     });
 
+    // Kalau VERIFIED, kasih XP + update progress challenge
+    if (status === 'VERIFIED') {
+      await prisma.user.update({
+        where: { id: report.userId },
+        data: { totalXP: { increment: 20 } },
+      });
+
+      await prisma.notification.create({
+        data: {
+          userId: report.userId,
+          title: 'Laporan Diverifikasi',
+          message: 'Laporan kamu telah diverifikasi dan kamu mendapatkan 20 XP!',
+          type: 'REPORT_STATUS_CHANGED',
+        },
+      });
+
+      const now = new Date();
+      const activeProgress = await prisma.challengeProgress.findMany({
+        where: {
+          userId: report.userId,
+          isCompleted: false,
+          challenge: {
+            startDate: { lte: now },
+            endDate: { gte: now },
+          },
+        },
+        include: { challenge: true },
+      });
+
+      for (const cp of activeProgress) {
+        const newProgress = cp.progress + 1;
+        const isNowCompleted = newProgress >= cp.challenge.target;
+
+        await prisma.challengeProgress.update({
+          where: { id: cp.id },
+          data: {
+            progress: newProgress,
+            isCompleted: isNowCompleted,
+            completedAt: isNowCompleted ? now : null,
+          },
+        });
+
+        if (isNowCompleted) {
+          await prisma.user.update({
+            where: { id: report.userId },
+            data: { totalXP: { increment: cp.challenge.rewardXP } },
+          });
+
+          await prisma.notification.create({
+            data: {
+              userId: report.userId,
+              title: 'Challenge Selesai!',
+              message: `Kamu berhasil menyelesaikan challenge "${cp.challenge.name}" dan mendapatkan ${cp.challenge.rewardXP} XP!`,
+              type: 'CHALLENGE_COMPLETED',
+            },
+          });
+        }
+      }
+    }
+
+    if (status === 'REJECTED') {
+      await prisma.notification.create({
+        data: {
+          userId: report.userId,
+          title: 'Laporan Ditolak',
+          message: `Laporan kamu ditolak. Alasan: ${rejectReason}`,
+          type: 'REPORT_REJECTED',
+        },
+      });
+    }
+
     res.json({ message: `Status laporan berhasil diubah menjadi ${status}`, report: updatedReport });
   } catch (error) {
     res.status(500).json({ message: 'Terjadi kesalahan', error: error.message });

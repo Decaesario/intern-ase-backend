@@ -4,14 +4,25 @@ export const getMe = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        profilePicture: true,
+        totalXP: true,
+        isActive: true,
+        createdAt: true,
+      },
     });
 
     if (!user) {
       return res.status(404).json({ message: 'User tidak ditemukan' });
     }
 
-    res.json({ user });
+    const oceanLevel = Math.floor(user.totalXP / 100) + 1;
+
+    res.json({ user: { ...user, oceanLevel } });
   } catch (error) {
     res.status(500).json({ message: 'Terjadi kesalahan', error: error.message });
   }
@@ -20,7 +31,15 @@ export const getMe = async (req, res) => {
 export const getAllUsers = async (req, res) => {
   try {
     const users = await prisma.user.findMany({
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        totalXP: true,
+        isActive: true,
+        createdAt: true,
+      },
     });
     res.json({ users });
   } catch (error) {

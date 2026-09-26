@@ -7,6 +7,7 @@ import userRoutes from './src/routes/userRoutes.js';
 import reportRoutes from './src/routes/reportRoutes.js';
 import dashboardRoutes from './src/routes/dashboardRoutes.js';
 import informasiRoutes from './src/routes/informasiRoutes.js';
+import challengeRoutes from './src/routes/challengeRoutes.js';
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/informasi', informasiRoutes);
+app.use('/api/challenges', challengeRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend SDG 14 berjalan');
