@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma.js';
+import { checkAndAwardBadges } from '../utils/badgeChecker.js';
 
 // CREATE - bikin laporan baru
 export const createReport = async (req, res) => {
@@ -184,7 +185,6 @@ export const verifyReport = async (req, res) => {
       },
     });
 
-    // Kalau VERIFIED, kasih XP + update progress challenge
     if (status === 'VERIFIED') {
       await prisma.user.update({
         where: { id: report.userId },
@@ -242,6 +242,8 @@ export const verifyReport = async (req, res) => {
           });
         }
       }
+
+      await checkAndAwardBadges(report.userId);
     }
 
     if (status === 'REJECTED') {
