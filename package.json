@@ -22,8 +22,10 @@
     "mysql2": "^3.23.3"
   },
   "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.17.0",
     "nodemon": "^3.1.14",
-    "prisma": "^7.9.1"
+    "prisma": "^7.9.1",
+    "prisma-erd-generator": "^3.2.1"
   },
   "allowScripts": {
     "prisma@7.9.1": true,
