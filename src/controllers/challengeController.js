@@ -11,13 +11,23 @@ export const createChallenge = async (req, res) => {
       });
     }
 
+    if (!Number.isInteger(target) || target < 1 || !Number.isInteger(rewardXP) || rewardXP < 1) {
+      return res.status(400).json({ message: 'target dan rewardXP harus bilangan bulat positif' });
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start) || isNaN(end) || end <= start) {
+      return res.status(400).json({ message: 'Periode tidak valid, endDate harus setelah startDate' });
+    }
+
     const challenge = await prisma.challenge.create({
       data: {
         name,
         description: description || null,
         target,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate: start,
+        endDate: end,
         rewardXP,
       },
     });
@@ -28,7 +38,7 @@ export const createChallenge = async (req, res) => {
   }
 };
 
-// READ - semua challenge (publik/user)
+// READ - semua challenge (publik, tanpa progress)
 export const getAllChallenges = async (req, res) => {
   try {
     const challenges = await prisma.challenge.findMany({
@@ -41,65 +51,84 @@ export const getAllChallenges = async (req, res) => {
   }
 };
 
-// DELETE - khusus admin
-export const deleteChallenge = async (req, res) => {
+// READ - challenge milik user lengkap dengan progress
+// GET /api/challenges/me?tab=active (default) | completed
+export const getMyChallenges = async (req, res) => {
   try {
-    const { id } = req.params;
+    const userId = req.user.userId;
+    const tab = req.query.tab || 'active';
 
-    const challenge = await prisma.challenge.findUnique({ where: { id: Number(id) } });
-    if (!challenge) {
-      return res.status(404).json({ message: 'Challenge tidak ditemukan' });
+    if (!['active', 'completed'].includes(tab)) {
+      return res.status(400).json({ message: 'tab harus active atau completed' });
     }
 
-    await prisma.challenge.delete({ where: { id: Number(id) } });
+    const now = new Date();
 
-    res.json({ message: 'Challenge berhasil dihapus' });
+    if (tab === 'completed') {
+      const rows = await prisma.challengeProgress.findMany({
+        where: { userId, isCompleted: true },
+        include: { challenge: true },
+        orderBy: { completedAt: 'desc' },
+      });
+
+      const challenges = rows.map((row) => ({
+        ...row.challenge,
+        progress: row.progress,
+        isCompleted: true,
+        completedAt: row.completedAt,
+      }));
+
+      return res.json({ tab, total: challenges.length, challenges });
+    }
+
+    const activeChallenges = await prisma.challenge.findMany({
+      where: { startDate: { lte: now }, endDate: { gte: now } },
+      orderBy: { endDate: 'asc' },
+    });
+
+    const progressRows = await prisma.challengeProgress.findMany({
+      where: { userId, challengeId: { in: activeChallenges.map((c) => c.id) } },
+    });
+    const progressMap = new Map(progressRows.map((p) => [p.challengeId, p]));
+
+    const challenges = activeChallenges
+      .map((challenge) => {
+        const p = progressMap.get(challenge.id);
+        return {
+          ...challenge,
+          progress: p ? p.progress : 0,
+          isCompleted: p ? p.isCompleted : false,
+          completedAt: p ? p.completedAt : null,
+        };
+      })
+      .filter((c) => !c.isCompleted);
+
+    res.json({ tab, total: challenges.length, challenges });
   } catch (error) {
     res.status(500).json({ message: 'Terjadi kesalahan', error: error.message });
   }
 };
 
-// JOIN - user ikut challenge
-export const joinChallenge = async (req, res) => {
+// DELETE - khusus admin
+export const deleteChallenge = async (req, res) => {
   try {
-    const { id } = req.params;
-    const challengeId = Number(id);
-    const userId = req.user.userId;
+    const challengeId = Number(req.params.id);
+    if (!Number.isInteger(challengeId)) {
+      return res.status(400).json({ message: 'ID challenge tidak valid' });
+    }
 
     const challenge = await prisma.challenge.findUnique({ where: { id: challengeId } });
     if (!challenge) {
       return res.status(404).json({ message: 'Challenge tidak ditemukan' });
     }
 
-    const existing = await prisma.challengeProgress.findUnique({
-      where: { userId_challengeId: { userId, challengeId } },
-    });
+    // progress user ikut dihapus dulu supaya tidak terkena foreign key error
+    await prisma.$transaction([
+      prisma.challengeProgress.deleteMany({ where: { challengeId } }),
+      prisma.challenge.delete({ where: { id: challengeId } }),
+    ]);
 
-    if (existing) {
-      return res.status(409).json({ message: 'Kamu sudah mengikuti challenge ini' });
-    }
-
-    const progress = await prisma.challengeProgress.create({
-      data: { userId, challengeId, progress: 0, isCompleted: false },
-    });
-
-    res.status(201).json({ message: 'Berhasil mengikuti challenge', progress });
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan', error: error.message });
-  }
-};
-
-// GET - progress user di semua challenge yang diikuti
-export const getMyChallengeProgress = async (req, res) => {
-  try {
-    const userId = req.user.userId;
-
-    const progressList = await prisma.challengeProgress.findMany({
-      where: { userId },
-      include: { challenge: true },
-    });
-
-    res.json({ progressList });
+    res.json({ message: 'Challenge berhasil dihapus' });
   } catch (error) {
     res.status(500).json({ message: 'Terjadi kesalahan', error: error.message });
   }

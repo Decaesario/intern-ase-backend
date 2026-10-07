@@ -5,8 +5,8 @@ import {
   getReportById,
   updateReport,
   deleteReport,
-  verifyReport,
 } from '../controllers/reportController.js';
+import { verifyReport } from '../controllers/reportVerifyController.js';
 import { updateReportStatus } from '../controllers/reportStatusController.js';
 import { getMyReports } from '../controllers/myReportController.js';
 import { getHeatmap, getHeatmapAreaDetail } from '../controllers/mapController.js';
