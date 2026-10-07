@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import 'dotenv/config';
 
 import authRoutes from './src/routes/authRoutes.js';
@@ -9,11 +11,15 @@ import dashboardRoutes from './src/routes/dashboardRoutes.js';
 import informasiRoutes from './src/routes/informasiRoutes.js';
 import challengeRoutes from './src/routes/challengeRoutes.js';
 import badgeRoutes from './src/routes/badgeRoutes.js';
+import uploadRoutes from './src/routes/uploadRoutes.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -22,6 +28,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/informasi', informasiRoutes);
 app.use('/api/challenges', challengeRoutes);
 app.use('/api/badges', badgeRoutes);
+app.use('/api/uploads', uploadRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend SDG 14 berjalan');
