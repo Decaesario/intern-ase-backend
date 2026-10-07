@@ -1,6 +1,48 @@
 import prisma from '../lib/prisma.js';
 import { checkAndAwardBadges } from '../utils/badgeChecker.js';
 
+const POLLUTION_LEVELS = ['LOW', 'MODERATE', 'HIGH', 'CRITICAL'];
+
+// Validasi jenis sampah: id harus ada di database, dan "Lainnya" wajib disertai customWasteType
+const validateWasteTypes = async (wasteTypeIds, customWasteType) => {
+  if (
+    !Array.isArray(wasteTypeIds) ||
+    wasteTypeIds.length === 0 ||
+    !wasteTypeIds.every((id) => Number.isInteger(id))
+  ) {
+    return { error: 'wasteTypeIds harus berupa array angka dan minimal 1' };
+  }
+
+  const uniqueIds = [...new Set(wasteTypeIds)];
+  const found = await prisma.wasteType.findMany({ where: { id: { in: uniqueIds } } });
+
+  if (found.length !== uniqueIds.length) {
+    return { error: 'Ada wasteTypeIds yang tidak ditemukan' };
+  }
+
+  const hasOther = found.some((w) => w.name === 'Lainnya');
+  const cleanCustom = customWasteType ? String(customWasteType).trim() : '';
+
+  if (hasOther && cleanCustom === '') {
+    return { error: 'customWasteType wajib diisi jika memilih jenis sampah "Lainnya"' };
+  }
+
+  return { uniqueIds, customWasteType: hasOther ? cleanCustom : null };
+};
+
+// Validasi foto: array 1 sampai 5 URL berupa teks
+const validatePhotoUrls = (photoUrls) => {
+  if (
+    !Array.isArray(photoUrls) ||
+    photoUrls.length < 1 ||
+    photoUrls.length > 5 ||
+    !photoUrls.every((url) => typeof url === 'string' && url.trim() !== '')
+  ) {
+    return 'Wajib 1 sampai 5 foto (photoUrls berupa array URL)';
+  }
+  return null;
+};
+
 // CREATE - bikin laporan baru + notifikasi ke admin
 export const createReport = async (req, res) => {
   try {
@@ -15,14 +57,26 @@ export const createReport = async (req, res) => {
       photoUrls,
     } = req.body;
 
-    if (!latitude || !longitude || !pollutionLevel || !wasteTypeIds || wasteTypeIds.length === 0) {
+    if (!latitude || !longitude || !pollutionLevel || !wasteTypeIds) {
       return res.status(400).json({
         message: 'Latitude, longitude, pollutionLevel, dan minimal 1 wasteTypeIds wajib diisi',
       });
     }
 
-    if (!photoUrls || photoUrls.length < 1 || photoUrls.length > 5) {
-      return res.status(400).json({ message: 'Wajib upload 1 sampai 5 foto' });
+    if (!POLLUTION_LEVELS.includes(pollutionLevel)) {
+      return res.status(400).json({
+        message: 'pollutionLevel harus LOW, MODERATE, HIGH, atau CRITICAL',
+      });
+    }
+
+    const photoError = validatePhotoUrls(photoUrls);
+    if (photoError) {
+      return res.status(400).json({ message: photoError });
+    }
+
+    const wasteCheck = await validateWasteTypes(wasteTypeIds, customWasteType);
+    if (wasteCheck.error) {
+      return res.status(400).json({ message: wasteCheck.error });
     }
 
     const report = await prisma.report.create({
@@ -33,9 +87,9 @@ export const createReport = async (req, res) => {
         locationName: locationName || null,
         pollutionLevel,
         description: description || null,
-        customWasteType: customWasteType || null,
+        customWasteType: wasteCheck.customWasteType,
         wasteTypes: {
-          connect: wasteTypeIds.map((id) => ({ id })),
+          connect: wasteCheck.uniqueIds.map((id) => ({ id })),
         },
         photos: {
           create: photoUrls.map((url) => ({ fileUrl: url })),
@@ -112,9 +166,21 @@ export const getReportById = async (req, res) => {
 export const updateReport = async (req, res) => {
   try {
     const { id } = req.params;
-    const { latitude, longitude, locationName, pollutionLevel, description, customWasteType } = req.body;
+    const {
+      latitude,
+      longitude,
+      locationName,
+      pollutionLevel,
+      description,
+      customWasteType,
+      wasteTypeIds,
+      photoUrls,
+    } = req.body;
 
-    const report = await prisma.report.findUnique({ where: { id: Number(id) } });
+    const report = await prisma.report.findUnique({
+      where: { id: Number(id) },
+      include: { wasteTypes: true },
+    });
 
     if (!report) {
       return res.status(404).json({ message: 'Laporan tidak ditemukan' });
@@ -128,16 +194,47 @@ export const updateReport = async (req, res) => {
       return res.status(403).json({ message: 'Laporan tidak dapat diubah karena sudah dalam proses peninjauan' });
     }
 
+    if (pollutionLevel !== undefined && !POLLUTION_LEVELS.includes(pollutionLevel)) {
+      return res.status(400).json({
+        message: 'pollutionLevel harus LOW, MODERATE, HIGH, atau CRITICAL',
+      });
+    }
+
+    // Jenis sampah dan customWasteType divalidasi bersama supaya tetap konsisten
+    const finalWasteTypeIds =
+      wasteTypeIds !== undefined ? wasteTypeIds : report.wasteTypes.map((w) => w.id);
+    const finalCustom =
+      customWasteType !== undefined ? customWasteType : report.customWasteType;
+
+    const wasteCheck = await validateWasteTypes(finalWasteTypeIds, finalCustom);
+    if (wasteCheck.error) {
+      return res.status(400).json({ message: wasteCheck.error });
+    }
+
+    const data = {
+      latitude: latitude ?? report.latitude,
+      longitude: longitude ?? report.longitude,
+      locationName: locationName ?? report.locationName,
+      pollutionLevel: pollutionLevel ?? report.pollutionLevel,
+      description: description ?? report.description,
+      customWasteType: wasteCheck.customWasteType,
+      wasteTypes: { set: wasteCheck.uniqueIds.map((wid) => ({ id: wid })) },
+    };
+
+    if (photoUrls !== undefined) {
+      const photoError = validatePhotoUrls(photoUrls);
+      if (photoError) {
+        return res.status(400).json({ message: photoError });
+      }
+      data.photos = {
+        deleteMany: {},
+        create: photoUrls.map((url) => ({ fileUrl: url })),
+      };
+    }
+
     const updatedReport = await prisma.report.update({
       where: { id: Number(id) },
-      data: {
-        latitude: latitude ?? report.latitude,
-        longitude: longitude ?? report.longitude,
-        locationName: locationName ?? report.locationName,
-        pollutionLevel: pollutionLevel ?? report.pollutionLevel,
-        description: description ?? report.description,
-        customWasteType: customWasteType ?? report.customWasteType,
-      },
+      data,
       include: { wasteTypes: true, photos: true },
     });
 
