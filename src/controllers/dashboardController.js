@@ -152,7 +152,7 @@ export const getUserDashboard = async (req, res) => {
       reportsByStatus,
       totalXP: user.totalXP,
       oceanLevel: calculateOceanLevel(user.totalXP),
-      activeChallenges: activeChallengeList,
+      activeChallenges: activeChallengeList.filter((c) => !c.isCompleted),
       challengesCompleted,
       badges: userBadges.map((ub) => ({ ...ub.badge, earnedAt: ub.earnedAt })),
       latestReports,

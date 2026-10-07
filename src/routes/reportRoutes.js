@@ -1,11 +1,10 @@
 import express from 'express';
 import {
   createReport,
-  getAllReports,
-  getReportById,
   updateReport,
   deleteReport,
 } from '../controllers/reportController.js';
+import { getAllReports, getReportById } from '../controllers/reportQueryController.js';
 import { verifyReport } from '../controllers/reportVerifyController.js';
 import { updateReportStatus } from '../controllers/reportStatusController.js';
 import { getMyReports } from '../controllers/myReportController.js';
@@ -17,8 +16,8 @@ const router = express.Router();
 router.get('/map', getHeatmap);
 router.get('/map/:areaId', getHeatmapAreaDetail);
 router.get('/me', verifyToken, getMyReports);
-router.get('/', getAllReports);
-router.get('/:id', getReportById);
+router.get('/', verifyToken, authorize('ADMIN'), getAllReports);
+router.get('/:id', verifyToken, getReportById);
 router.post('/', verifyToken, createReport);
 router.patch('/:id', verifyToken, updateReport);
 router.delete('/:id', verifyToken, deleteReport);

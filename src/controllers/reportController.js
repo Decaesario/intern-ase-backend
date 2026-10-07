@@ -120,47 +120,6 @@ export const createReport = async (req, res) => {
   }
 };
 
-// READ - semua laporan (bisa difilter by status)
-export const getAllReports = async (req, res) => {
-  try {
-    const { status } = req.query;
-
-    const reports = await prisma.report.findMany({
-      where: status ? { status } : {},
-      include: { wasteTypes: true, photos: true },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    res.json({ reports });
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan', error: error.message });
-  }
-};
-
-// READ - detail 1 laporan
-export const getReportById = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const report = await prisma.report.findUnique({
-      where: { id: Number(id) },
-      include: {
-        user: { select: { id: true, name: true } },
-        wasteTypes: true,
-        photos: true,
-      },
-    });
-
-    if (!report) {
-      return res.status(404).json({ message: 'Laporan tidak ditemukan' });
-    }
-
-    res.json({ report });
-  } catch (error) {
-    res.status(500).json({ message: 'Terjadi kesalahan', error: error.message });
-  }
-};
-
 // UPDATE - edit laporan (cuma pemilik, cuma kalau masih SUBMITTED)
 export const updateReport = async (req, res) => {
   try {

@@ -51,8 +51,17 @@ export const verifyReport = async (req, res) => {
         data: {
           userId: report.userId,
           title: 'Laporan Diverifikasi',
-          message: 'Laporan kamu telah diverifikasi dan kamu mendapatkan 20 XP!',
+          message: 'Laporan kamu telah diverifikasi oleh Admin.',
           type: 'REPORT_STATUS_CHANGED',
+        },
+      });
+
+      await prisma.notification.create({
+        data: {
+          userId: report.userId,
+          title: 'XP Bertambah',
+          message: 'Kamu mendapatkan 20 XP dari laporan yang terverifikasi!',
+          type: 'XP_EARNED',
         },
       });
 
