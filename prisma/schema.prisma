@@ -27,8 +27,6 @@ model User {
   challengeProgress ChallengeProgress[]
   notifications     Notification[]
   badges            UserBadge[]
-  events            Event[]             @relation("EventOrganizer")
-  joins             EventParticipant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -55,8 +53,6 @@ model Report {
   photos     ReportPhoto[]
   wasteTypes WasteType[]
 
-  event   Event? @relation(fields: [eventId], references: [id])
-  eventId Int?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -175,32 +171,3 @@ model InformasiEdukasi {
   updatedAt      DateTime @updatedAt
 }
 
-model Event {
-  id           Int                 @id @default(autoincrement())
-  title        String
-  description  String?
-  location     String
-  latitude     Float
-  longitude    Float
-  date         DateTime
-  quota        Int?
-  organizerId  Int
-  organizer    User                @relation("EventOrganizer", fields: [organizerId], references: [id])
-  reports      Report[]
-  participants EventParticipant[]
-  beforeImage  String?
-  afterImage   String?
-  totalWasteKg Float?
-  createdAt    DateTime            @default(now())
-}
-
-model EventParticipant {
-  id       Int      @id @default(autoincrement())
-  eventId  Int
-  event    Event    @relation(fields: [eventId], references: [id])
-  userId   Int
-  user     User     @relation(fields: [userId], references: [id])
-  joinedAt DateTime @default(now())
-
-  @@unique([eventId, userId])
-}
