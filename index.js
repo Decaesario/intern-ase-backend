@@ -13,6 +13,7 @@ import challengeRoutes from './src/routes/challengeRoutes.js';
 import badgeRoutes from './src/routes/badgeRoutes.js';
 import uploadRoutes from './src/routes/uploadRoutes.js';
 import notificationRoutes from './src/routes/notificationRoutes.js';
+import wasteTypeRoutes from './src/routes/wasteTypeRoutes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +32,7 @@ app.use('/api/challenges', challengeRoutes);
 app.use('/api/badges', badgeRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/waste-types', wasteTypeRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend SDG 14 berjalan');
