@@ -7,6 +7,7 @@ import {
   deleteReport,
   verifyReport,
 } from '../controllers/reportController.js';
+import { updateReportStatus } from '../controllers/reportStatusController.js';
 import { getHeatmap, getHeatmapAreaDetail } from '../controllers/mapController.js';
 import { verifyToken, authorize } from '../middleware/authMiddleware.js';
 
@@ -20,5 +21,6 @@ router.post('/', verifyToken, createReport);
 router.patch('/:id', verifyToken, updateReport);
 router.delete('/:id', verifyToken, deleteReport);
 router.patch('/:id/verify', verifyToken, authorize('ADMIN'), verifyReport);
+router.patch('/:id/status', verifyToken, authorize('ADMIN'), updateReportStatus);
 
 export default router;

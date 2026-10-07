@@ -157,7 +157,7 @@ export const deleteReport = async (req, res) => {
   }
 };
 
-// VERIFY - khusus admin, approve/reject laporan
+// VERIFY - khusus admin, approve/reject laporan (hanya dari status UNDER_REVIEW)
 export const verifyReport = async (req, res) => {
   try {
     const { id } = req.params;
@@ -175,6 +175,12 @@ export const verifyReport = async (req, res) => {
     const report = await prisma.report.findUnique({ where: { id: Number(id) } });
     if (!report) {
       return res.status(404).json({ message: 'Laporan tidak ditemukan' });
+    }
+
+    if (report.status !== 'UNDER_REVIEW') {
+      return res.status(409).json({
+        message: `Laporan hanya bisa diverifikasi atau ditolak dari status UNDER_REVIEW, sedangkan status laporan saat ini ${report.status}`,
+      });
     }
 
     const updatedReport = await prisma.report.update({
