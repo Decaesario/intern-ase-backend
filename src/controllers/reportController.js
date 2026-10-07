@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma.js';
 import { checkAndAwardBadges } from '../utils/badgeChecker.js';
 
-// CREATE - bikin laporan baru
+// CREATE - bikin laporan baru + notifikasi ke admin
 export const createReport = async (req, res) => {
   try {
     const {
@@ -43,6 +43,23 @@ export const createReport = async (req, res) => {
       },
       include: { wasteTypes: true, photos: true },
     });
+
+    // FR-NTF-02: notifikasi ke semua admin aktif (kecuali pembuat laporan)
+    const admins = await prisma.user.findMany({
+      where: { role: 'ADMIN', isActive: true, id: { not: req.user.userId } },
+      select: { id: true },
+    });
+
+    if (admins.length > 0) {
+      await prisma.notification.createMany({
+        data: admins.map((admin) => ({
+          userId: admin.id,
+          title: 'Laporan Baru Masuk',
+          message: `Ada laporan baru (ID ${report.id}) yang menunggu untuk ditinjau.`,
+          type: 'NEW_REPORT_ADMIN',
+        })),
+      });
+    }
 
     res.status(201).json({ message: 'Laporan berhasil dibuat', report });
   } catch (error) {
