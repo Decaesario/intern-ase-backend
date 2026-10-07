@@ -20,6 +20,8 @@ model User {
   profilePicture String?
   totalXP        Int      @default(0)
   isActive       Boolean  @default(true)
+  resetTokenHash   String?
+  resetTokenExpiry DateTime?
 
   reports           Report[]
   challengeProgress ChallengeProgress[]
