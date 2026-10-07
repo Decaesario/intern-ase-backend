@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
+import prisma from '../lib/prisma.js';
 
-export const verifyToken = (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -9,12 +10,27 @@ export const verifyToken = (req, res, next) => {
 
   const token = authHeader.split(' ')[1];
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'rahasia_sementara');
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, process.env.JWT_SECRET || 'rahasia_sementara');
   } catch (error) {
     return res.status(401).json({ message: 'Token tidak valid atau kadaluarsa' });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { isActive: true, role: true },
+    });
+
+    if (!user || !user.isActive) {
+      return res.status(401).json({ message: 'Akun tidak aktif atau tidak ditemukan' });
+    }
+
+    req.user = { userId: decoded.userId, role: user.role };
+    next();
+  } catch (error) {
+    return res.status(500).json({ message: 'Terjadi kesalahan', error: error.message });
   }
 };
 
