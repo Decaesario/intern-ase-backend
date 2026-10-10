@@ -56,6 +56,40 @@ export const getAllReports = async (req, res) => {
   }
 };
 
+// READ - telusuri laporan publik (semua user login)
+// Hanya status VERIFIED / IN_PROGRESS / RESOLVED
+// GET /api/reports/public?status=RESOLVED&search=plastik
+export const getPublicReports = async (req, res) => {
+  try {
+    const { status, search } = req.query;
+
+    if (status && !PUBLIC_STATUSES.includes(status)) {
+      return res.status(400).json({ message: `status harus salah satu dari ${PUBLIC_STATUSES.join(', ')}` });
+    }
+
+    const where = {
+      status: status ? status : { in: PUBLIC_STATUSES },
+    };
+
+    const searchFilter = buildSearchFilter(search);
+    if (searchFilter) Object.assign(where, searchFilter);
+
+    const reports = await prisma.report.findMany({
+      where,
+      include: {
+        user: { select: { id: true, name: true } },
+        wasteTypes: true,
+        photos: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ total: reports.length, reports });
+  } catch (error) {
+    res.status(500).json({ message: 'Terjadi kesalahan', error: error.message });
+  }
+};
+
 // READ - detail 1 laporan
 // Admin dan pemilik boleh melihat semua status; user lain hanya laporan yang sudah VERIFIED ke atas
 export const getReportById = async (req, res) => {
