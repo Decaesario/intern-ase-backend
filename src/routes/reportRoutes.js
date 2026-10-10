@@ -10,6 +10,14 @@ import { updateReportStatus } from '../controllers/reportStatusController.js';
 import { getMyReports } from '../controllers/myReportController.js';
 import { getHeatmap, getHeatmapAreaDetail } from '../controllers/mapController.js';
 import { verifyToken, authorize } from '../middleware/authMiddleware.js';
+import { limitLengths } from '../middleware/validateLength.js';
+
+const reportLimits = limitLengths({
+  locationName: 191,
+  description: 191,
+  customWasteType: 191,
+  photoUrls: 191,
+});
 
 const router = express.Router();
 
@@ -18,10 +26,10 @@ router.get('/map/:areaId', getHeatmapAreaDetail);
 router.get('/me', verifyToken, getMyReports);
 router.get('/', verifyToken, authorize('ADMIN'), getAllReports);
 router.get('/:id', verifyToken, getReportById);
-router.post('/', verifyToken, createReport);
-router.patch('/:id', verifyToken, updateReport);
+router.post('/', verifyToken, reportLimits, createReport);
+router.patch('/:id', verifyToken, reportLimits, updateReport);
 router.delete('/:id', verifyToken, deleteReport);
-router.patch('/:id/verify', verifyToken, authorize('ADMIN'), verifyReport);
+router.patch('/:id/verify', verifyToken, authorize('ADMIN'), limitLengths({ rejectReason: 150 }), verifyReport);
 router.patch('/:id/status', verifyToken, authorize('ADMIN'), updateReportStatus);
 
 export default router;
