@@ -14,10 +14,15 @@ const notificationMessages = {
 };
 
 // PATCH /api/reports/:id/status - khusus admin
+// Untuk status RESOLVED wajib menyertakan resolutionNote (catatan) dan resolutionPhotoUrl (foto penyelesaian)
 export const updateReportStatus = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body;
+    const reportId = Number(req.params.id);
+    if (!Number.isInteger(reportId)) {
+      return res.status(400).json({ message: 'ID laporan tidak valid' });
+    }
+
+    const { status, resolutionNote, resolutionPhotoUrl } = req.body;
 
     if (!requiredCurrentStatus[status]) {
       return res.status(400).json({
@@ -25,7 +30,24 @@ export const updateReportStatus = async (req, res) => {
       });
     }
 
-    const report = await prisma.report.findUnique({ where: { id: Number(id) } });
+    const data = { status };
+
+    if (status === 'RESOLVED') {
+      const note = typeof resolutionNote === 'string' ? resolutionNote.trim() : '';
+      const photoUrl = typeof resolutionPhotoUrl === 'string' ? resolutionPhotoUrl.trim() : '';
+
+      if (!note || !photoUrl) {
+        return res.status(400).json({
+          message: 'Untuk menandai selesai, resolutionNote (catatan) dan resolutionPhotoUrl (foto penyelesaian) wajib diisi',
+        });
+      }
+
+      data.resolutionNote = note;
+      data.resolutionPhotoUrl = photoUrl;
+      data.resolvedAt = new Date();
+    }
+
+    const report = await prisma.report.findUnique({ where: { id: reportId } });
     if (!report) {
       return res.status(404).json({ message: 'Laporan tidak ditemukan' });
     }
@@ -38,8 +60,8 @@ export const updateReportStatus = async (req, res) => {
     }
 
     const updatedReport = await prisma.report.update({
-      where: { id: Number(id) },
-      data: { status },
+      where: { id: reportId },
+      data,
     });
 
     await prisma.notification.create({

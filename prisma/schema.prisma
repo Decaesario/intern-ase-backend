@@ -49,6 +49,9 @@ model Report {
   status          ReportStatus @default(SUBMITTED)
   rejectReason    String?
   customWasteType String?
+  resolutionNote     String?   @db.Text
+  resolutionPhotoUrl String?
+  resolvedAt         DateTime?
 
   photos     ReportPhoto[]
   wasteTypes WasteType[]
@@ -157,6 +160,7 @@ enum NotificationType {
   REPORT_STATUS_CHANGED
   REPORT_REJECTED
   CHALLENGE_COMPLETED
+  CHALLENGE_REMINDER
   XP_EARNED
   BADGE_EARNED
   NEW_REPORT_ADMIN

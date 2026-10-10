@@ -30,6 +30,6 @@ router.post('/', verifyToken, reportLimits, createReport);
 router.patch('/:id', verifyToken, reportLimits, updateReport);
 router.delete('/:id', verifyToken, deleteReport);
 router.patch('/:id/verify', verifyToken, authorize('ADMIN'), limitLengths({ rejectReason: 150 }), verifyReport);
-router.patch('/:id/status', verifyToken, authorize('ADMIN'), updateReportStatus);
+router.patch('/:id/status', verifyToken, authorize('ADMIN'), limitLengths({ resolutionNote: 2000, resolutionPhotoUrl: 191 }), updateReportStatus);
 
 export default router;
