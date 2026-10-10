@@ -55,14 +55,21 @@ export const getMyBadges = async (req, res) => {
 // DELETE - khusus admin
 export const deleteBadge = async (req, res) => {
   try {
-    const { id } = req.params;
+    const badgeId = Number(req.params.id);
+    if (!Number.isInteger(badgeId)) {
+      return res.status(400).json({ message: 'ID badge tidak valid' });
+    }
 
-    const badge = await prisma.badge.findUnique({ where: { id: Number(id) } });
+    const badge = await prisma.badge.findUnique({ where: { id: badgeId } });
     if (!badge) {
       return res.status(404).json({ message: 'Badge tidak ditemukan' });
     }
 
-    await prisma.badge.delete({ where: { id: Number(id) } });
+    // kepemilikan badge oleh user ikut dihapus dulu supaya tidak terkena foreign key error
+    await prisma.$transaction([
+      prisma.userBadge.deleteMany({ where: { badgeId } }),
+      prisma.badge.delete({ where: { id: badgeId } }),
+    ]);
 
     res.json({ message: 'Badge berhasil dihapus' });
   } catch (error) {
