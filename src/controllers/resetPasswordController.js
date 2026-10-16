@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import prisma from '../lib/prisma.js';
+import { isMailConfigured, sendResetPasswordEmail } from '../utils/mailer.js';
 
 const RESET_TOKEN_TTL_MINUTES = 15;
 
@@ -31,8 +32,22 @@ export const forgotPassword = async (req, res) => {
       data: { resetTokenHash: hashToken(token), resetTokenExpiry: expiry },
     });
 
-    // TODO: kirim token lewat email (layanan email belum diputuskan tim).
-    // Sementara, token hanya dikembalikan di respons kalau BUKAN production.
+    // Kirim tautan reset lewat email. Kalau gagal, jangan bocorkan ke user
+    // (supaya email yang terdaftar tidak bisa ditebak), cukup catat di log server.
+    if (isMailConfigured()) {
+      try {
+        await sendResetPasswordEmail({
+          to: user.email,
+          name: user.name,
+          token,
+          ttlMinutes: RESET_TOKEN_TTL_MINUTES,
+        });
+      } catch (mailError) {
+        console.error('Gagal mengirim email reset password:', mailError.message);
+      }
+    }
+
+    // Di luar production, token juga dikembalikan di respons untuk keperluan test (Postman).
     if (process.env.NODE_ENV !== 'production') {
       return res.json({ message: genericMessage, resetToken: token, expiresAt: expiry });
     }
